@@ -1,8 +1,8 @@
 # Linux System Administration Reference
 Repository to Index Linux System Administration Reference Material
 
-[Linux LPIC 101](./lpic-101/Linux%20LPIC%20d164a7bad2d1425485d742e0f4d46f4f.md)
-[Bash/Shell Scripting](https://github.com/caetanoct/shell-scripting)
+- [Linux LPIC 101](./lpic-101/Linux%20LPIC%20d164a7bad2d1425485d742e0f4d46f4f.md)
+- [Bash/Shell Scripting](https://github.com/caetanoct/shell-scripting)
 
 # References
 
