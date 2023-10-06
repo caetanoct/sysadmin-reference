@@ -1308,4 +1308,1440 @@ The web interface for CUPS can be disabled by first stopping the CUPS service, c
 
 A printer queue can be installed using legacy LPD/LPR commands: `sudo lpadmin -p ENVY-4510 -L "office" -v socket://192.168.150.25 -m everywhere`
 
+# Networking
 
+IPv4 address classes:
+
+| Class | First Octet Range | Example              |
+|-------|-------------------|----------------------|
+| A     | 1-126             | 10.25.13.10          |
+| B     | 128-191           | 141.150.200.1        |
+| C     | 192-223           | 200.178.12.242       |
+
+224 - Reserved Multicast Purposes
+127 - Reserved Loopback Addresses
+
+## Private IP ranges
+
+Class A: 10.0.0.0 - 10.255.255.255
+Class B: 172.16.0.0 - 172.31.255.255
+Class C: 192.168.0.0 - 192.168.255.255
+
+## Converting Decimal to Binary
+
+Example:
+
+105/2 - R: 1 / Q: 52
+52/2  - R: 0 / Q: 26
+26/2  - R: 0 / Q: 13
+13/2  - R: 1 / Q: 6
+6/2   - R: 0 / Q: 3
+3/2   - R: 1 / Q: 1
+
+Subsequentially divide the value by 2, store the rest, group the last quotient followed by the remainder of all divisions.
+
+So binary of 152: 1101001
+
+## Netmask
+
+| Decimal      | Binary                                           | CIDR |
+|--------------|--------------------------------------------------|------|
+| 255.0.0.0    | 11111111.00000000.00000000.00000000              | /8   |
+| 255.255.0.0  | 11111111.11111111.00000000.00000000              | /16  |
+| 255.255.255.0| 11111111.11111111.11111111.00000000              | /24  |
+
+Every subnetwork has a network ip address and broadcast ip address (first and last), the rest of available ip addresses on the range will be available for hosts.
+
+To obtain the network address just use bitwise *logical and* between the IP address and the mask in their binary formats.
+
+To obtain the broadcast address we must use the network address where all host bits  are set to 1.
+
+## Protocols
+
+- 16-bit: port -> 65,535 values.
+- socket/non-privileged ports and privileged ports: 1 to 1023 are privileged ports (they have root access to the system). Origin of the connection will use range of ports from 1024 to 65,535, callet non-privileged ports or socket ports.
+- On linux, fou can find standard service ports on `/etc/services`
+
+| Port | Service | Description |
+|------|---------|-------------|
+| 20   | FTP     | Data        |
+| 21   | FTP     | Control     |
+| 22   | SSH     | Secure Socket Shell |
+| 23   | Telnet  | Remote connection without encryption |
+| 25   | SMTP    | Simple Mail Transfer Protocol, Sending Mails |
+| 53   | DNS     | Domain Name System |
+| 80   | HTTP    | Hypertext Transfer Protocol |
+| 110  | POP3    | Post Office Protocol, Receiving Mails |
+| 123  | NTP     | Network Time Protocol |
+| 139  | Netbios | - |
+| 143  | IMAP    | Internet Message Access Protocol, Accessing Mails |
+| 161  | SNMP    | Simple Network Management Protocol |
+| 162  | SNMPTRAP| SNMP Notifications |
+| 389  | LDAP    | Lightweight Directory Access Protocol |
+| 443  | HTTPS   | Secure HTTP |
+| 465  | SMTPS   | Secure SMTP |
+| 514  | RSH     | Remote Shell |
+| 636  | LDAPS   | Secure LDAP |
+| 993  | IMAPS   | Secure IMAP |
+| 995  | POP3S   | Secure POP3 |
+
+### TCP
+
+Connection is established between client through socket port and service through the service standard port.
+
+### UDP
+
+Does not control data transmission of the connection (does not check if packets have been lost or are out of order).
+
+### ICMP
+
+- Traffic Volume Control
+- Detection of Unreachable Destinations
+- Routes Redirection
+- Checking the status of remote hosts.
+
+### IPv6
+
+- Unicast: identifies single network interface (by default 64 bits on the left identify the network and 64 bits on the right identify the interface)
+- Multicast: identifies a set of network interfaces. packet sent to multicast address will be sent to all interfaces belonging to a group. (should not be confused with broadcast)
+- Anycast: also identifies a set of network interfaces, but the packet forwarded to an anycast address will be delivered to only one address in that set.
+
+IPv6 ip addresses when representing ip:port must be enclosed in `[]`, for example: `[2001::1319:8a2d:2342:1232]:443`
+
+IPv6 does not implement the broadcast feature exactly as it exists in IPv4. However the same result can be achieved by sending the packet to the address ff02::1, reaching all hosts on the local network. Something similar to using 224.0.0.1 on IPv4 for multicasting as a destination
+They are able to sel configure using SLAAC
+TTL has been replaced by HOP LIMIT on IPv6
+IPv6 interfaces have a local address, called link-local, prefixed with fe80::/10
+IPv6 implements NDP (Neighbor Discovery Protocol), similar to ARP and can also obtain information about duplicate addresses, routes, DNS servers, gateways.
+
+## Persistent Network Configuration
+
+- Display network interfaces: `nmcli device` or `ip link show`.
+- Older linux distros name network interfaces as eth0, eth1, etc. and are numbered in order which the kernel identifies the devices.
+- Interface Naming Convertion:
+  - en: ethernet
+  - ib: infiniband
+  - sl: serial line
+  - wl: wireless LAN
+  - ww: wireless WAN
+
+From higher to lower priority, the following rules are used by the operating system to name and number network interfaces:
+
+1. Name the interface after the index provided by the BIOS or by the firmware (eno1)
+2. Name the interface after the PCI Express slot index, as given by the BIOS. (ens1)
+3. Name the interface after its address at the corresponding bus. (enp3s5)
+4. Name the interface after the interface MAC. (enx78e7d1ea46da)
+5. Name the interface using legacy convertion (eth0)
+
+The Network Interfaces are created by the kernel, and there are many commands to interact with it.
+
+### Interface Management
+
+The old `ifconfig` command can still be used to do simple network interface configurations, but it is deprecated due to its limited support of non ethernet interfaces.
+
+`ip` command can be used to manage many other aspect of TCP/IP interfaces, like routes and tunnels.
+
+Command `ifup` and `ifdown` may be used to configure network interfaces based on interface definitions on `/etc/network/interfaces`.
+
+All network interfaces managed by ifup and ifdown should be listed in the `/etc/network/interfaces`. Lines beginning with the work `auto` are used to identify the physical interfaces to be brought on `ifup -a`. The interface name should follow the word `auto` on the same line.
+
+CentOS uses `/etc/sysconfic/network-scripts/` directory and the format is different.
+
+The following example shows a basic configuration file for interfaces lo (loopback) and enp3s5
+
+```txt
+auto lo
+iface lo inet loopback
+
+auto enp3s5
+iface enp3s5 inet dhcp
+```
+
+The address family should be inet for TCP/IP networking, but there is also support for IPX networking (ipx), and IPv6 networking (inet6). Loopback interfaces use the loopback configuration method. With the dhcp method, the interface will use the IP settings provided by the network’s DHCP server. The settings from the example configuration allow the execution of command ifup using interface name enp3s5 as its argument `ifup enp3s5`.
+
+In networks without a DHCP server, the static method could be used instead and the IP settings provided manually in /etc/network/interfaces. For example:
+
+```txt
+iface enp3s5 inet static
+    address 192.168.1.2/24
+    gateway 192.168.1.1
+```
+
+Interfaces using the static method do not need a corresponding auto directive, as they are brought up whenever the network hardware is detected.
+
+If the same interface has more than one iface entry, then all of the configured addresses and options will be applied when bringing up that interface. This is useful to configure both IPv4 and IPv6 addresses on the same interface, as well as to configure multiple addresses of the same type on a single interface.
+
+### Local and Remote Names
+
+The local name often matches the network name of the machine.
+
+If the file `/etc/hostname` exist, the OS will use contents of the first line as its local name.
+
+you can also use `hostnamectl set-hostname $name` to set the machine host name.
+
+The name in `/etc/hostname` is the static hostname, that is, the name which is used to initialize the system's hostname at boot. can contain up to 64 characters.
+
+#### Pretty hostname
+
+Unlike the static hostname, the pretty hostname may include all kinds of special characters. It can be used to set a more descriptive name for the machine, e.g. “LAN Shared Storage”:
+
+`hostnamectl --pretty set-hostname "LAN Shared Storage"`
+
+#### Transient hostname
+
+Used when the static hostname is not set or when it is the default localhost name. The transient hostname is normally the name set together with other automatic configurations, but it can also be modified by the command hostnamectl, e.g.
+
+`hostnamectl --transient set-hostname generic-host`
+
+If neither the --pretty nor --transient option is used, then all three hostname types will be set to the given name. To set the static hostname, but not the pretty and transient names, the option --static should be used instead. In all cases, only the static hostname is stored in the /etc/hostname file. Command hostnamectl can also be used to display various descriptive and identity bits of information about the running system:
+
+`hostnamectl status`
+
+#### Hostname Priority
+
+The system can use a local source or a remote server to translate names into IP numbers and vice versa. Methods priority can be defined in the `Name Service Switch` at `/etc/nsswitch.conf`.
+
+This configuration file is used to determine the source for name-ip and also the sources from which to obtain name-service information in a range of categories, called *databases*.
+
+The *hosts* database keeps track of mapping between host names and host numbers.
+
+##### Hosts database
+
+if the entry is `hosts: files dns` files and dns are the service names that specify how the lookup process for host names will work. First will match local files then it will ask DNS services.
+
+The local file for the Hosts database is `/etc/hosts`.
+
+You can add aliases or alternate spelling at the end of the line, for example:
+
+```txt
+192.168.1.10 foo.mydomain.org foo
+```
+
+It also supports IPv6 entries. for example the IPv6 loopback:
+
+```txt
+::1 localhost ip6-localhost ip6-loopback
+```
+
+##### Local DNS Configuration
+
+Following the `files` specification, the `dns` specification tells the system to ask a DNS service for the desired name/IP association. The responsible set of routines is called the *resolver* and its configuration file is `/etc/resolv.conf`.
+
+The following entries shows entries for Google public DNS server:
+
+```txt
+nameserver 8.8.4.4
+nameserver 8.8.8.8
+```
+
+`nameserver` keyword indicates the ip address of the DNS server, only one is needed but up to three can be given.
+
+The other ones are used ass fallback.
+
+If no nameserver entries are present, the default behaviour is to use the name server on the local machine.
+
+The resolver can be configured to automatically add the domain to names before consulting them on the name server. For example:
+
+```txt
+nameserver 8.8.4.4
+nameserver 8.8.8.8
+domain mydomain.org
+search mydomain.net mydomain.com
+```
+
+The `domain` entry sets `mydomain.org` as the local domain name. so queries for names within `mydomain.org` will be allowed to use short names relative to the local domain.
+The `search` entry has a similar purpose, but it accepts a list of domains to try when a short name is provided. By default, it contains only the local domain name.
+
+## NetworkManager
+
+Most linux distributions use NetworkManager to configure and control network connections.
+
+When using DCHP, NetworkManager arranges route changes, IP address fetching and updates to the local list of DNS servers. When there is a cabled and wi-fi connection, NetworkManager will prioritize the wired connection.
+
+By default, NetworkManager daemon controls the interfaces that are **not** listed in the  `/etc/network/interfaces`.
+
+It runs in the background with root privileges.
+
+NetworkManager comes in both CLI (nmcli and nmtui) and graphical environment (nm-tray, network-manager-gnome, nm-applet or plasma-nm).
+
+`nmcli` separates all network related properties controlled by NetworkManager in categories called *objects*:
+
+- `general`
+    NM general status and operations
+- `networking`
+    Overall networking contrl
+- `radio`
+    radio switches
+- `connection`
+    connections
+- `device`
+    devices managed by NM
+- `agent`
+    NM secret agent or polkit agent
+- `monitor`
+    Monitor NM changes
+
+`nmcli device wifi list` to scan available networks. Then you can run `nmcli device wifi connect $SSID`. If the command is executed inside a terminal emulator a dialog box will appear, when executed in a text only console the password may be provided together with other arguments.
+
+If the network hides its SSID name you should connect to it usind `nmclide device wifi connect $SSID password $password hidden yes`. If the OS has more than one wi-fi adapted, when you can indicate the one you want to connect using `nmcli device wifi connect $SSID password $pass ifname $ifname`
+
+After connecting you should be able to visualize connections using `nmcli connection show`. After a connection is saved you can run `nmcli connection up $name` and `nmcli connection down $name`. The interface name can also be used to recconect, for example: `nmcli device disconnect wlo2`. Note that the connection UUID changes every time the connection is brought up.
+
+If the wireless adapter is not being used it can be turned off to save power using `nmcli radio wifi off`
+
+`nmcli device wifi list` lists a local database found in last scan, to re-run a scan run `nmcli device wifi rescan`.
+
+## systemd-networkd
+
+Systems running systemd can use its built-in daemon to manage network connectivity and `systemd-resolved` to manage local name resolution. The configuration files used by `systemd-networkd` to setup network interfaces can be found in:
+
+- `/lib/systemd/network`
+- `/run/systemd/network`
+- `/etc/systemd/network`
+
+The files are processed in lexicographic order, so it is recommended to start their names with numbers to make the ordering easier to read and see.
+
+Files in `/etc` have the highest priority. whilst files in `/run` take precedence over files with the same name in `/lib`.
+
+Files with the same name in different directories will be ignored based on their priority.
+
+Files ending with `.netdev` are used to create virtual network devices (like *bridges* or *tun* devices).
+Files ending with `.link` set low-level configurations. systemd-networkd detect and configures network devices automatically as they appear.
+Files ending with `.network` can be used to setup network addresses and routes. The network interface to which the config file refers to is defined in the `[Match]` section.
+
+For example, the ethernet network interface `enp3s5` can be selected within `/etc/systemd/network/30-lan.network` by using
+
+```ini
+[Match]
+Name=enp3s5
+```
+
+A list of whitespace separated names is also accepted to match many network interfaces with this same file at one. It can also contain shell style globs like `en*`. You can also match by mac address:
+
+To match all ethernet interfaces you should use `name=en*`.
+
+```ini
+[Match]
+MACAddress=00:12:2d:a2:23:3d
+```
+
+The settings device are in `[Network]` section:
+
+```ini
+[Match]
+Name=wlp3s0
+
+[Network]
+Address=192.168.0.254/24
+Gateway=192.168.0.1
+```
+
+or
+
+```ini
+[Match]
+Name=wlp3s0
+
+[Network]
+DCHP=yes
+```
+
+Using `DHCP=yes` the daemon will search for both IPv4 and IPv6 addresses. To use IPv4 only you should use `DHCP=ipv4`.
+
+Password-protected wireless networks can also be configured by systemd-networkd, but the network adapter must be already authenticated in the network before systemd-networkd can configure it.
+
+Authentication is performed by *WPA supplicant*, a program dedicated to configure network adapters for password protected networks.
+
+`wpa_passphrase MyWifi > /etc/wpa_supplicant/wpa_supplicant-wlo1.conf`
+
+The command above will take the passphrase from stdin and store its hash in the `/etc/wpa_supplicant/wpa_supplicant-wlo1`.
+
+The systemd manager read the WPA passphrase files in `/etc/wpa_supplicant/` and creates the corresponding service to run WPA supplicant and bring the interface up.
+
+The passphrase file will have a corresponding service unit called `wpa_supplicant@wlo1.service`. Command `systemctl start wpa_supplicant-wlo1@wlo1.service` will associate the wireless adapter with the remote access point. command `systemctl enable wpa_supplicant-wlo1@wlo1.service` makes the association on boot time.
+
+Finally a `.network` file matching the `wlo1` interface must be present in `/etc/systemd/network/`, as `systemd-networkd` will use it to configure the interface as soon as WPA supplicant finishes the association with the AP.
+
+## Network Troubleshooting and Management
+
+packet sniffers, hex viewers and protocol analyzers can help.
+
+### `ip` command
+
+each subcommand of `ip` has its own man page. you can see more information on SEE ALSO section or add `-` and the name of the subcommand, for example: `man ip-route`
+
+#### Routing Review
+
+Ethernet is not a routable protocol, there is a limitation to how much you can control the flow of network traffic. Routable protocols like ipv4 and ipv6 allow network designers to segment networks to reduce the processing requirements of connectivity devices, provide redudancy and manage traffic.
+
+When a IPv4 or IPv6 host with routing enabled receives a packet that is not for the host itself it will:
+
+- match the network protion of the destination network in the routing table
+  - if a matching entry is found it sends the packet to the destination specified in the routing table
+  - if no entries are found and a default route is configured, it is sent to the defualt route.
+  - if no entry and no default rule is present, the packet is discarded.
+
+#### Configuring an Interface
+
+you can use `ifconfig` and `ip`. `net-tools` package will provide legacy networking commands.
+
+to list all interfaces use `ifconfig -a` or `ip addr`, `ip a`.
+you can also list the contents of `sys/class/net` using `ls /sys/class/net`. you can also use `ip link`
+
+to configure using ifconfig you must be logged in as root and run:
+
+```bash
+ifconfig enp1s0 192.168.50.50/24
+```
+
+you can specify netmask in different formats, for example:
+
+```bash
+ifconfig eth2 192.168.50.50 netmask 255.255.255.0
+ifconfig eth2 192.168.50.50 netmask 0xffffff00
+ifconfig enp0s8 add 2001:db8::10/64
+```
+
+to configure with `ip`
+
+```bash
+ip addr add 192.168.5.5/24 dev enp0s8
+ip addr add 2001:db8::10/64 dev enp0s8
+```
+
+#### Configuring Low Level Options
+
+`ip link` command is used to configure low level interface or porotocol settings, such as VLANS, ARP or MTUS's.
+
+a common task is to enable/disable an interface:
+
+```bash
+ip link set dev enp0s8 down
+ip link show dev enp0s8
+```
+
+this can be done with `ifconfig enp0s8 down`, for example.
+
+to adjust the interface MTU you can run `ip link set enp0s8 mtu 2000` or `ifconfig enp0s8 mtu 2000`
+
+#### Routing Table
+
+You can use the following commands to view the routing table:
+
+- `route`
+- `netstat -r`
+- `ip route`
+
+To view ipv6 routing table:
+
+- `route -6`
+- `netstat -6r`
+- `ip -6 route`
+
+The `Flag` column provides some information about the route.
+
+- The `U` flag indicates that the route is up
+- The `!` flag means reject route (a route with ! will not be user)
+- The `n` flag means the route hasn't been cached (the kernel maintains a cache of routes for faster lookups separately from all known routes)
+- The `G` flag indicates a gateway
+
+The `Metric` or `Met` colun is not used by the kernel (refers to administrative distance to the target). It can be used by routing protocols to determine dynamic routes.
+The `Ref` column is the reference count or number of uses of a route. Also not used by the linux kernel.
+The `Use` column show the number of lookups for a route.
+
+In the output of `netstat -r`, MSS indicates the maximum segment size for TCP connections over that route.
+The `Window` column shows you the defualt TCP window size.
+The `irtt` shows the round trip time for packets on this route.
+
+The output of ip route and ip -6 route reads as follows:
+
+1. Destination.
+2. Optional address followed by interface.
+3. The routing protocol used to add the route.
+4. The scope of the route. If this is omitted, it is global scope, or a gateway.
+5. The route’s metric. This is used by dynamic routing protocols to determine the cost of the route. This isn’t used by most systems.
+6. If it is an IPv6 route, the RFC4191 route preference.
+
+##### IPv4 Example
+
+`default via 10.0.2.2 dev enp0s3 proto dhcp metric 100`
+
+1. The destination is the default route.
+2. The gateway address is 10.0.2.2 reachable through interface enp0s3.
+3. It was added to the routing table by DHCP.
+4. The scope was omitted, so it is global.
+5. The route has a cost value of 100.
+6. No IPv6 route preference.
+
+##### IPv6 Example
+
+`fc0::/64 dev enp0s8 proto kernel metric 256 pref medium`
+
+1. The destination is fc0::/64.
+2. It is reachable through interface enp0s8.
+3. It was added automatically by the kernel.
+4. The scope was omitted, so it is global.
+5. The route has a cost value of 256.
+6. It has an IPv6 preference of medium.
+
+```bash
+ping6 -c 2 2001:db8:1::20
+route -6 add 2001:db8:1::/64 gw 2001:db8::3
+# now ping would work
+route -6 del 2001:db8:1::64 gw 2001:db8::3
+```
+
+instead of route -6 you could use `ip route add 2001:db8:1::/64 via 2001:db8::3`
+
+##### Other Examples
+
+Link up/down:
+
+```bash
+ip link set wlan1 up
+ip link set wlan1 down
+```
+
+List interfaces:
+
+```bash
+ls /sys/class/net
+```
+
+List hardware capabilities:
+
+```bash
+lshw -class network
+```
+
+ethtool is a program that displays and changes Ethernet card settings such as auto-negotiation, port speed, duplex mode, and Wake-on-LAN:
+
+```bash
+ethtool eth4
+```
+
+Adding IP address to interface:
+
+```bash
+ip addr add 172.16.15.16/16 dev enp0s9 label enp0s9:sub1 # label adds an alias to interface.
+```
+
+Adding Vlan:
+
+```bash
+ip link add link enp0s9 name enp0s9.20 type vlan id 20
+```
+
+Configuring default route:
+
+```bash
+route add default gw 192.168.1.1
+ip route add default via 192.168.1.1
+```
+
+Display ARP cache:
+
+```bash
+ip neighbour
+```
+
+Backing up route table:
+
+```bash
+ip route save > routebackup
+ip route restore < routebackup
+```
+
+Configure STP priority 50:
+
+```bash
+ip link add link enp0s9 name enp0s9.50 type bridge priority 50
+```
+
+Puger all IP address configuration:
+
+```bash
+ip addr flush eth0
+```
+
+[Ubuntu Network Configuration: Refer to this link](https://ubuntu.com/server/docs/network-configuration)
+
+### Ping
+
+`ping` and `ping6` can be used to test connectivity. Remember that firewalls can block ICMP, therefore empty replies does not always mean that you have no connectivity.
+
+Other reasons a ping can fail:
+
+- Remote host is down.
+- Router ACL blocking the ICMP request.
+- Remote Host Firewall.
+- Incorrect name/addres
+- Incorrect command / version (v4/v6)
+- Machine Firewall
+- Machine network configuration
+- Name resolution returning wrong address
+- Remote host network configuration is incorrect
+- Machine interface disconnected
+- Remote machine interface disconnected
+- Network component between switch/cable/route is no longer functioning.
+
+### Tracing Routes
+
+`traceroute` and `traceroute6` can be used to show the root (by incrementing the TTL field of IP Header). Each router along the way respons with a TTL exceeded ICMP message.
+
+By default, traceroute sends 3 UDP packets with junk data to port 33434, incrementing it each time it sends a packet. Each line in the output is a router interface the packet traverses through. The times shown in each line of the output is the RTT for each packet.
+
+If DNS is available, traceroute will use it.
+
+If you see a `*` in place of time, it means that traceroute never received the TTL exceeded message for this packet.
+
+If you use `traceroute -I` will set traceroute to use ICMP echo instead of UDP packets.
+
+Some application block ICMP echo requests. To get arount you can use TCP by using a known open TCP port.
+
+To use TCP on port: `traceroute -m 60 -T -p 80 HOST`.
+
+You can use a specific interface for traceroute: `traceroute -i eth2 HOST.COM`
+
+You can also report MTUs using: `traceroute -I --mtu host.com`
+
+### Finding MTUs with `tracepath`
+
+`tracepath` is similar to traceroute, but it tracks the MTU sizes along the path. it will either be a setting on NIC or a hardware limitation of the largest protocol data unit that it can transmit or receive.
+
+Work by incrementing the TTL. It sends a very large UDP datagram.
+
+It is almost inevitable for the datagram to be larger than the device with the smallest MTU along the route. When the packet reaches this device, device usually respond with a destination unreachable packet. The ICMP destination unreachable has a MTU field of the link it would send the packet on if it weere able. tracepath then sends all subsequent packets with this size:
+
+### Creating Arbitrary Connections
+
+`nc` program, or netcat, can send or receive data over a TCP or UDP network.
+
+for example: listener on port 1234:
+
+```bash
+nc -l 1234
+```
+
+sender to send packet to net2.example on port 1234:
+
+```bash
+nc net2.example 1234
+```
+
+The -u option is for UDP. -e instructs netcat to send everything it receives to standard input of the executable following it. For example:
+
+```bash
+hostname
+# net1
+nc -u net2.example 1234
+hostname
+#net2
+pwd
+#/home/emma
+```
+
+### Viewing Current Connections and Listeners
+
+`netstat` and `ss` can be used to view the status of the current listeners and connections.
+
+Common options:
+
+- `-a`
+    shows all sockets
+- `-l`
+    shows listening sockets
+- `-p`
+    shows the process associated with the connection
+- `-n`
+    prevents name lookups for both ports and addresses
+- `-t`
+    tcp
+- `-u`
+    udp
+
+The `Recv-Q` column is the number of packets a socket has received but not passed off to its program.
+The `Send-Q` command is the number of packet a socket has sent that have not been acknowleged by the receiver.
+
+### Some examples
+
+Enter HTTP request using nc
+
+```bash
+nc host.com 80
+>
+GET / HTTP/1.1
+HOST: host.com
+# enter blank line
+```
+
+Show connections lisetint for TCP on port 8000:
+
+```bash
+ss -tnl | grep ":8000"
+```
+
+Show process listening on port 443:
+
+```bash
+ss -np | grep ":8000"
+```
+
+## Networking Summary
+
+Networking is usually configured by a system’s startup scripts or a helper such as NetworkManager.
+
+Most distributions have their own tools, you should consult the distribution documentation.
+
+## Client-side DNS
+
+### Name Resolution Process
+
+Programs that resolve names to numbers will almost always use standard `glibc` on linux systems. The first things these functions do is read the file in `/etc/nsswitch.conf` for instructions on how to resolve that type name. Besides host name resolution, it can also be appliad to group names, port numbers, user names and others.
+
+After receiving instructions from `/etc/nsswitch.conf` it will loop up the name in the manner specified.
+
+What comes next could be anything (`/etc/nsswitch.conf` supports plugins). After the function is done looking up it will return the result to the calling process.
+
+### DNS Classes
+
+DNS has three records classes:
+
+- IN - internet addresses (TCP/IP)
+- HS - Hesiod (way of storing things like passwd and group entries in DNS)
+- CH - ChaosNet (short lived, no longer used)
+
+### Example of `/etc/nsswitch.conf`
+
+```txt
+passwd:compat
+group:compat
+shadow:compat
+hosts:dns [!UNAVAIL=return] files
+networks:nis [NOTFOUND=return] files
+ethers:nis [NOTFOUND=return] files
+protocols:nis [NOTFOUND=return] files
+rpc:nis [NOTFOUND=return] files
+services:nis [NOTFOUND=return] files
+# This is a comment. It is ignored by the resolution functions
+```
+
+The left columns is the type of name database. The rest are the methods the resolution functions should use to lookup a name. Columns with `[]` are used to provide some limited conditional logic to the immediately left method.
+
+> For example, is a process calls C library call `gethostbyname`, it will read from the config file, and since the process is looking for a host it will find a line starting with hosts and use the method. It will try to use dns to resolve the name, the column `[!UNAVAIL=return]` means that if the service is not unavailable, then do not try the next source, i.e., if DNS is available, stop trying to resolve the host name even if the name servers are unable to. If DNS is unavailable, then continue on to the next source (files).
+
+When you see a column in the format `[result=action]`, it means that when a resolver lookup of the column to the left of it is `result`, than `action` is performed. if `result` is preceded with a  `!`, it means if the result is not  `result`, then perform `action`.
+
+Now suppose a process is trying to resolve a port number to a service name. It would read the `services` line. The first source is `NIS`. NIS stands for *Network Information Service* (sometimes referred to as yellow pages). It is an old service that allowed central management of things such as users (rarely used due to weak security). The column `[NOTFOUND=return]` means that if the lookup succeeded but the service was not found to stop looking. If the condition does not apply, use local files.
+
+### `/etc/resolv.conf` file
+
+It is used to configure host resolution via DNS. Some distributions has startup scripts, daemons and other tools that write to this file.
+
+The format is: `option name` `option values`.
+
+You can specify up to three `nameservers` using the `nameserver` option. for example:
+
+```txt
+search test.org
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+```
+
+The `search` option is used to allow short form searches. This means that any attempt to resolve a host name withou a domain portion will have `test.org` appended before the search. For examplo, you are trying to search a host called `learning`, the resolver would search for `learning.lpi.org`. You can have up to six search domains configured.
+
+The `domain` option is used to set the local domain name. If this option is missing, this defaults to everything after the first `.` in the machine host name. if the hostname does not contain a `.`, it is assumed that the machine is part of the root domain.
+
+`domain` and `search` are **mutually exclusive**. If both are present, the last instance in the file is used.
+
+you can set some options to affect the behaviour of the resolver, for example:
+
+`option timeout:3`
+
+### `/etc/hosts` file
+
+Used to resolve names to ip addresses and vice versa.
+
+format is: `ip-address name [alias...]`
+
+### systemd-resolved
+
+this service provides mDNS, DNS and LLMNR.
+
+When running, it listens to DNS requests on `127.0.0.53`.
+
+Does not provide a full fledged DNS server.
+
+Any DNS requests it receives are looked up by querying servers configured in `/etc/systemd/resolv.con` or `/etc/resolv.conf`.
+
+If you wish to use this, use `resolve` for `hosts` in `/etc/nsswitch.conf`. Keep in mind that the OS package that has `systemd-resolved` library may not be installed by default.
+
+### Name Resolution Tools
+
+- `getent` -  real world requests will resolve.
+- `host` - simple dns queries.
+- `dig` - complex DNS operations for troubleshooting.
+
+#### `getent` command
+
+The command display entries from name service databases. can retrieve records from any source configurable by `/etc/nsswitch.conf`. for example: `getent hosts` or `getent hosts dns1.teste.org`
+
+Starting with glibc version 2.2.5, you can force getent to use a specific data source with the -s option, for example: `getent -s files hosts teste.org` or `getent -s dns hosts teste.org`
+
+It is a good way to see how the resolver will resolve the name (it uses `/etc/nsswitch.conf`). The other tools query only for DNS.
+
+#### `host` command
+
+simple program for looking up DNS entries. With no options, it returns A, AAAA and MX records sets. If given IPv4 or IPv6 addres, it outputs the PTR record if available.
+
+example: `host wipikedia.org` and `host 208.80.154.224`
+
+to query specific recort type specify using `host -t NS lpi.org` or `host -t SOA lpi.org`.
+
+host can also be used to query a specific name server if you do not wish to use the ones in `/etc/resolv.conf`. Simply add the IP address or host name of the server you wish to use as the last argument: `host -t MX test.com dns1.dnsserver.com`
+
+#### `dig` command
+
+Verbose output, good for debugging DNS troubles.
+
+```txt
+; <<>> DiG 9.18.12-0ubuntu0.22.04.3-Ubuntu <<>> google.com
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 62043
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 65494
+;; QUESTION SECTION:
+;google.com.			IN	A
+
+;; ANSWER SECTION:
+google.com.		300	IN	A	142.251.128.142
+
+;; Query time: 1300 msec
+;; SERVER: 127.0.0.53#53(127.0.0.53) (UDP)
+;; WHEN: Thu Sep 21 15:31:50 -03 2023
+;; MSG SIZE  rcvd: 55
+```
+
+The first section of the output display version and query sent, along with options.
+
+Next section shows information about the query and the response.
+Next section shows information about ENDS extensions used and the query. (OPT PSEUDOSECTION)
+Next section shows the result of the query. Number in the second column is the TTL of the resource in seconds.
+
+The rest of the output provides information about the domain’s name servers, including the NS records for the server along with the A and AAAA records of the servers in the domain’s NS record.
+
+You can specify the record type using `dig -t SOA teste.org`
+You can use many options for example: `dig +short` to query only the result or `dig +nocookie` to not use cookie EDNS extension.
+
+You can override defaults in `.digrc`
+
+# Security
+
+Some common security tasks as sysadmin:
+
+- special permissions on files
+- user password aging
+- open ports and sockets
+- use of system resourcers
+- logged-in users
+- privilege escalation through su and sudo
+
+## Checking files with SUID and SGID
+
+SUID will allow the file to be executed with privileges of the file's owner. (4000, represented by s or S on the owners execute permission bit). An example is `passwd` command.
+
+It has SUID so users can change their own password.
+
+SGID can be set on FILES and DIRECTORIES.
+SGID on file is similar to SUID but the file is with group owner privileges.
+SGID on directory will allow files created on this directory to inherit the ownership of the directory group.
+SGID is represented by s or S on the group execute permission bit (numerical 2000).
+
+To find files with either or both SUID and SGID set you can use the  `find` command with `-perm` option.
+
+- `-perm numericvalue` or `-perm symbolicvalue`
+    will find files having special permissions exclusively
+- `-perm -numericvalue` or `-perm -symbolivalue` (- prefix)
+    will find files having the special permissions and other permissions
+- `-perm /numericvalue` or `-perm /numericvalue` (/ prefix)
+    will find files having either of the speciel permissions (and other permissions)
+
+Example:
+
+To find files with only SUID set in current directory: `find . -perm 4000` or use `u+s`
+To find files matching SUID (irrespective of other permissions in /usr/bin): `find /usr/bin -perm -4000` or use `-u+s`
+To find files with either SUID or SGID add 4 and 2 and use /: `find /usr/bin -perm /6000`
+
+## Password management and Aging
+
+You can use `passwd -S` to get status information about the current account.
+
+There will usually be 7 fields: `caetano P 12/07/2019 0 99999 7 -1`
+
+1. The login name
+2. Indication if user has valid password (P) or locket password(L)/no password (NP)
+3. Date of last password change
+4. Minimum age in days (number of days between password change) 0 means change anytime
+5. Maximum age in days (number of days password is valid) 99999 will disable password expiration
+6. 7 warning perion (number of days prior to password expiration a user will be warned)
+7. password inactivity perion (number of inactive days after password expiration before account is locked) value -1 will remove account inactivity.
+
+You can lock and unlock accounts with `-l` and `-u`
+You can force a user to change their password on the next login using `-e`
+You can delete a user’s password with the  `-d` option
+
+You can also lock/unlock user password with `usermod` command:
+
+- `usermod -L USERNAME`
+- `usermod -U USERNAME`
+
+The `chage` (change age) utility is good to deal with password and account aging. as root you can run `chage -l` followed by a username to have that users current password and account expiry infromation.
+
+run without options to run **interactively**.
+
+or you can specify options manually:
+
+-m days username or --mindays days username
+
+Specify minimum number of days between password changes (e.g.: chage -m 5 carol). A value of 0 will enable the user to change his/her password at any time.
+
+-M days username or --maxdays days username
+
+Specify maximum number of days the password will be valid for (e.g.: chage -M 30 carol). To disable password expiration, it is customary to give this option a value of 99999.
+
+-d days username or --lastday days username
+
+Specify number of days since the password was last changed (e.g.: chage -d 10 carol). A value of 0 will force the user to change their password on the next login.
+
+-W days username or --warndays days username
+
+Specify number of days the user will be reminded of their password being expired.
+
+-I days username or --inactive days username
+
+Specify number of inactive days after password expiration (e.g.: chage -I 10 carol) — the same as usermod -f or usermod --inactive. Once that number of days has gone by, the account will be locked. With a value of 0, the account will not be locked, though.
+
+-E date username or --expiredate date username
+
+Specify date (or number of days since the epoch — January, 1st 1970) on which the account will be locked. It is normally expressed in the format YYYY-MM-DD(e.g.: chage -E 2050-12-13 carol).
+
+Examples:
+Make password valid for 365 days: `chage -M 365 carol`
+Make user change password on next login: `chage -d 0 carol`
+Minimum number of days between password cahnges to 1: `chage -m 1 carol`
+Disable password expiration: `chage -M 99999 carol`
+Enable user to change password at any time: `chage -m 0 carol`
+Set warning period to 7 days and accounte xpiration to 20/08/20250: `chage -W 7 -E 2050-08-20 carol`
+Print current password information: `chage -l mary`
+
+## Discovering Open Ports
+
+### lsof
+
+To keep an eye in open ports four powerful utilities are present: `lsof`, `fuser`, `netstat` and `nmap`
+
+`lsof` stands for list open files (which is a lot!)
+
+to limit the output  to only "internet" network files, run `lsof -i` (you can use i4 or i6 also)
+
+you can specify a particular host to check for its connection, for example: `lsof -i@192.168.10.2`
+
+you can specify multiple ports separated by commas, for example: `lsof -i@192.168.10.2:22,80`
+
+---
+
+### fuser
+
+`fuser` is to find a file's user, which involves knowing what processes ar eaccessing what files.
+
+`fuser -v .` will get some information about the current working directory.
+
+Breaking down the output:
+
+File is the file we are getting information about (/home/user, for example)
+
+USER column is the owner of the file
+PID column is the process identified
+ACCESS column is the type of access (..c..) one of:
+`c` current directory
+`e` executable being run
+`f` open file (ommited in default display mode)
+`F` open file for writing (ommited in default display mode)
+`r` root dir
+`m` nmap'ed file or shared library
+`.` placeholder
+COMMAND column is the command affiliated with the file (bash)
+
+with the `-n` (or `--namespace`) you can find informationa about network ports/sockets. You **must** supply the network protocol and port number. for example: `fuser -vn tcp 80`.
+
+you can kill processes acessing the file, for example `fuser -k 80/tcp`.
+
+---
+
+### netstat
+
+running netstat without options will display both internet connections and unix sockets.
+
+some options:
+
+`-e` extend will display additional information.
+without `-l` only established connections will show, with `-l` will list listening connections
+
+---
+
+### nmap
+
+it can port scan by using `nmap $ipaddress`.
+
+aside from a single host you can scan:
+
+multiple host (separating them by space): `nmap 192.168.0.1 localhost`
+host ranges: `nmap 192.168.0.3-10`
+subnets: `nmap 192.168.0.*` or `nmap 192.168.0.0/24`
+to scan  a port use `nmap -p 22 localhost`
+scan multiple ports: `nmap -p ssh,80 localhost`
+`nmap -p 20-80 localhost`
+
+`-F` will host a fast scan on the 100 most common ports
+`-v` wil show a verbose output and `-vv` will show even more verbose output
+
+## Examples
+
+Examples:
+Show network files for host 192.168.1.55 on port 22: `lsof -i@192.168.1.55:22`
+Show processes accessing the default por of the apache web server on your machine: `fuser -vn tcp 80`
+List all listening udp sockets: `netstat -ul`
+Scan ports 80 to 443 on host 192.168.1.55: `nmap -p 80-443 192.168.1.55`
+
+## Limits on User Logins, Processes and Memory Usage
+
+Resources are not unlimited, you can ensure a good balance between user limites on resources using `ulimit`.
+
+There are **soft** and **hard** limits with `ulimit`. Specified by `-S` and `-H` options.
+
+Running ulimit without options or arguments will display the soft file blocks of the current user.
+
+to display all soft limits use `-Sa` or `-a`. to display all hard limits use `-Ha`.
+
+`-b` will display maximum socket buffer size.
+`-f` maximum size of files written by the shell and its children.
+`-l` maximum size that may be locked into  memory
+`-m` maximum resident size (RSS), the current portion of memory held by a process in main RAM.
+`-v` maximum amount of virtual memory
+`-u` maximum number of processes available to a single user.
+
+When displaying limts you can display soft/hard limits: `ulimit -u`. `ulimit -Su`. `ulimit -Hu`
+To set a limit just use: `ulimit -f 500` (will set both hard and soft). To make limits persistent accross reboots use `/etc/security/limits.conf`
+Since ulimit is a bash builtin, you need to refer to bash manual to read it.
+Once hard limit is set, regular users can't increase it.
+
+## Dealing with logged users
+
+Three utilities that can help tracking logged in users:
+
+- `last` - list of last logged users
+- `lasb` - bad login attempts
+- `who` - information abot logged in user
+  - --runlevel display current curnt level
+  - --boot shows last system boot
+  - --heading show column heading
+- `w` - more verbose output (including JCPU (All processes atached to TTY) and PCPU (process under WHAT)) you can use `w $user`
+
+> remember pts (pseudo terminal slaved) and tty (teletypewriter).
+
+## Basic sudo configuration and usage
+
+running `su - root` will ensure the user environment is being loaded, without `-` the old user environment will be kepts.
+
+the default security policy is `sudoers` and specified in `/etc/sudoers` and `/etc/sudoers.d/*`
+
+basic usage of sudo: `sudo -u TARGET-USERNAME command`.
+
+> sudoers will use a per-user (and per-terminal) timestamp for credential caching, so that you can use sudo without a password for a default period of fifteen minutes. This default value can be modified by adding the timestamp_timeout option as a Defaults setting in /etc/sudoers (e.g.: Defaults timestamp_timeout=1 will set credential caching timeout to one minute).
+
+### `/etc/sudoers`
+
+specification of who can run what commands as what users on what machines.
+
+- % indicates groups
+- should use visudo to edit
+- can use aliases
+
+The privilege specification for the root user is ALL=(ALL:ALL) ALL. This translates as: user root (root) can log in from all hosts (ALL), as all users and all groups ((ALL:ALL)), and run all commands (ALL). The same is true for members of the sudo group — note how group names are identified by a preceding percent sign (%).
+
+To have forexample ser carol be able to check apache2 status from any host as any user or group:
+
+```txt
+carol ALL=(ALL:ALL) /usr/bin/systemctl status apache2
+```
+
+To let carol not provide her password to run systemctl status, you can use:
+
+```txt
+carol ALL=(ALL:ALL) NOPASSWD: /usr/bin/systemctl status apache2
+```
+
+To restrict your hosts to 192.168.10.1 and enable carol to run systemctl status apache2 as user mimi (`sudo -u mimi systemctl status apache2`):
+
+```txt
+carol 192.168.10.1=(mimi) /usr/bin/systemctl status apache2
+```
+
+To give privileges to carol , you can run `sudo usermod -aG sudo carol`
+
+> in red hat distros, the `wheel` is the counterpart to the special administrative sudo group on debian systems.
+
+to change the default text editor, add in `/etc/sudoers`:
+
+```txt
+Defaults    editor=/usr/bin/nano
+```
+
+or specify a text editor via EDITOR env var: EDITOR=/usr/bin/nano visudo
+
+three types of aliases:
+
+- host aliases (Host_Alias)
+  - comma separated list of hostnames, ip addresses, networks and netgroups (preceded by +), netmasks
+- user aliases (User_Alias)
+  - list of usernames, groups (preceded by %), netgroups (preceded by +). can exclude users with !.
+- command aliases(Cmnd_Alias)
+  - list of commands and rirectories, if a directory is specified, any file in that directory will be included (subdirs ignored). the example contains a single command with all its subcommands
+for example:
+
+```txt
+# Host alias specification
+Host_Alias SERVERS = 192.168.1.7, server1, server2
+
+# User alias specification
+User_Alias REGULAR_USERS = john, mary, alex
+User_Alias PRIVILEGED_USERS = mimi, alex
+User_Alias ADMINS = carol, %sudo, PRIVILEGED_USERS, !REGULAR_USERS
+
+# Cmnd alias specification
+Cmnd_Alias SERVICES = /usr/bin/systemctl *
+
+# User privilege specification
+root ALL=(ALL:ALL) ALL
+ADMINS SERVERS=SERVICES
+# Allow members of group sudo to execute any command
+%sudo
+ALL=(ALL:ALL) ALL
+```
+
+As a result of the alias specifications, the line ADMINS SERVERS=SERVICES under the User privilege specification section translates as: all users belonging in ADMINS can use sudo to run any command in SERVICES on any server in SERVERS.
+
+## Improve authentication security with Shadow Passwords
+
+A way of remembering the order of the field in `/etc/passwd` is to think about the process of a user logging in:
+first enter login name, then the system will map the name to a uid, and then into a gid. then the system asks for a password, the fifht lookps up the comment and the sixth enters the home directory. and the seventh is the default shell.
+
+the `x` in passwd indicated that the password is hashed an stored in `/etc/shadow`
+
+you can lock a user password using `sudo passwd -l user`
+you can test the lock using `sudo login user`
+to list information about the password you can use `sudo chage -l user`
+to change a user passwd you can use `sudo passwd user`
+
+To prevent all users except the root user from logging into the system temporarily, the superuser may create a file named /etc/nologin. This file may contain a message to the users notifying them as to why they can not login (for example, system maintenance notifications). For details see man 5 nologin. Note there is also a command nologin which can be used to prevent a login when set as the default shell for a user. For example:
+`sudo usermod -s /sbin/nologin emma`
+See man 8 nologin for more details.
+
+## Superdaemon to Listen for Incoming Network Connections
+
+on Sys-V init systems you would control services using `service`. on systemd systems you use `systemctl`.
+
+in former times, where availability of resources were smaller. To run a service, you would need a superdameon listening for incoming network connections that will start the service when a network connection to the appropriate service was made. For example: `inetd` and `xinetd`.
+
+On current systems, the `systemd.socket` can be used in a similar way.
+
+Before configuring the xinetd service some preparation is necessary.
+
+To use xinetd to intercept connections to sshd, we can do the following:
+first make sure you have openssh-server and xinetd installed.
+check that ssh is listening on port 22: lsof -i :22
+stop the ssh service with systemctl stop sshd.service
+create xinetd configuration file in `/etc/xinet.d/ssh`:
+
+```txt
+service ssh
+{
+disable = no
+socket_type = stream
+protocol= tcp
+wait= no
+user= root
+server = /usr/sbin/sshd
+server_args = -i
+flags= IPv4
+interface= 192.168.178.1
+}
+```
+restart the xinetd: systemctl restart xinetd.service
+
+check lsof -i:22 and you will see xinetd is listening on that port
+
+by default systemd already has a systemd socket unit to ssh. it is used to substitute xinetd:
+
+you just have to start the ssh socket unit: systemctl start ssh.socket
+
+when you run lsof -i :22 -P you will see systemd is taking over the control of the port.
+
+## Checking Services for Unnecessary Daemons
+
+on sysv-init systems you can check status of all services with:
+`sudo service --status-all`
+
+to disable Unnecessary services run `sudo update-rc.d SERVICE-NAME remove` on debian or `sudo chkconfig SERVICE-NAME off` on redhat
+
+on systemd servites you can use `systemctl list-units --state active --type service`
+to disable you can run `systemctl disable UNIT --now`
+
+the command will stop the service and remove it from the list.
+
+you get a surver of listenint network services with netstat (provided by net-tools packages) with netstat -ltu
+
+## TCP Wrappers as Sort of a Simple Firewall
+
+it is a legacy way to secure network connections. 
+
+to make the ssh service available only from the local network:
+
+check wheter the ssh daemon uses libwrap which offers tcp wrappers support:
+
+ldd /usr/bin/sshd | grep "libwrap"
+
+now add the file on `/etc/hosts.deny`
+
+```
+sshd: ALL
+```
+
+configure an exceptionin `/etc/hosts.allow`
+
+```
+sshd: LOCAL
+```
+
+changes take effect immediately
+
+# Encryption
+
+
+## SSH
+
+SSH (Secure Shell) was designed with security in mind. It uses public key cryptography to authenticate both hosts and users and encryps all subsequent information exchange.
+
+SSH can be used to establish *port tunnels*. This allows non-encrypted protocol to transmit data over an encrypted ssh connection. Current recommended version of the SSH protocol is 2.0. OpenSSH is free and open source implementation of the SSH Protocol.
+
+The message "authenticity of host can't be establised" on the first connection is normal because there is not any data about the ECDSA Key fingerprint of the host public key (it uses SHA256). Once accepting the connection the public key of the remote server will be stored the *known hosts* database. it is kepts unde `~/.ssh/known_hosts`.
+
+On a local DHCP Network where adress can change, you can get a man-in-the-middle attack message because the host public key fingerprint is not the same.
+
+You can then remove the offending key: `ssh-keygen -f "/home/USER/.ssh/known_hosts" -R "HOSTIP"`.
+
+### Key-based Logins
+
+The process consists of:
+
+1. Create a key pair on the client machine (ssh-keygen -t ALOGRITHM)
+2. Add the public key to the `~/.ssh/authorized_keys` file of the user on the remote host.
+
+For example:
+
+```bash
+ssh-keygen -t ecdsa -b 521 #-b to specify key size in bits
+```
+
+It will generate assymetric keys where only one can decrypt the other encryption result.
+
+one way of doing  the step two is:
+
+```bash
+cat id_ecdsa.pub | ssh user@remote_ip 'cat >> .ssh/authorized_keys'
+```
+
+or use `scp`.
+
+
+using the SSH authentication agent (ssh-agent). The authentication agent needs to spawn its own shell and will hold your private keys — for public key authentication — in memory for the remainder of the session. Let us see how it works in a little bit more detail:
+
+use ssh agent to start a new bash shell.
+
+```bash
+ssh-agent /bin/bash
+```
+
+Use the ssh-add command to add your private key to a secure area of memory. If you supplied a passphrase when generating the key pair — which is recommended for extra security — you will be asked for it:
+
+Once your identity has been added, you can login to any remote server on which your public key is present without having to type your passphrase again. It is common practice on modern desktops to perform this command upon booting your computer, as it will remain in memory until the computer is shutdown (or the key is unloaded manually).
+
+Some algorithms that can be used with ssh-keygen:
+
+- **RSA**
+  - published in 1977. Minimum key size is 1024 (default 2048)
+- **DSA**
+  - digital signature algorithms has been proven to be insecure and is deprecated. must be exactly 1024 bits in length
+- **ecdsa**
+  - eliptic curve digital signature algorithm is an improvement of DSA, considered more secure. it uses elyptic  curve cryptography. ECDSA key size can be: 256, 384 or 521
+- **ed25519**
+  - an implementation of EdDSA that uses the 25519 curve. considered most secure of all. fixed key lengths of 256 bits.
+
+### Role of OpenSSH Server Host Keys
+
+The global configuration directory for OpenSSH lives in `/etc/ssh`
+
+Configuration for the client: `/etc/ssh/ssh_config`
+Configuration for the server: `/etc/ssh/sshd_config`
+The server uses the host keys to identify itself to clients as required. Their name pattern is:
+
+**private keys**: `ssh_host_` prefix + `algorithm` + `key` suffix, example: `ssh_host_rsa_key`
+**public keys**: `ssh_host_` prefix + `algorithm` + `key.pub` suffix, example: `ssh_host_rsa_key.pub`
+
+A fingerprint is created by applying a cryptographic hash function to a public key. They simplify key management.
+
+permissions for private keys are 0600 and for public keys are 0644.
+
+To view the fingerprint of the key use `ssh-keygen -l -f /etc/ssh/ssh_host_ed25519_key`
+To view the fingerprint of the key and random art use `ssh-keygen -lv -f /etc/ssh/ssh_host_ed25519_key`
+
+### SSH Port Tunnels
+
+OpenSSH features a forwarding facility where traffic on a source port is tunneled and encrypted through an SSH Process which then redirects it to a port on a destination host.
+
+This mechanism is known as port tunneling or port forwarding
+
+* allows to bypass firewalls to access ports on remote hosts
+* allows access from the outside to a host on the private network
+* encryption for all data exchange
+
+#### Local Port Tunnel
+
+You can define a port locally to forward traffic to the destination host through the SSH process.
+
+The SSH process can run on the local host or on a remote server.
+
+For example, if you want to tunnel a connection to `www.gnu.org` through SSH using port 8585 on the local machine, you can do: `ssh -L 8585:www.gnu.org:80 debian`
+
+with the -L switch, we specify the local port 8585 to connect to http port 80 on www.gnu.org using the SSH process running on debian — our localhost.
+
+We could have written ssh -L 8585:www.gnu.org:80 localhost with the same effect. If you now use a web browser to go to http://localhost:8585, you will be forwarded to www.gnu.org. For demonstration purposes, we will use lynx (the classic, text-mode web browser): `lynx http://localhost:8585`
+
+If you wanted to do the exact same thing but connecting through an SSH process running on another host, you would have proceeded like so: `ssh -L 8585:www.gnu.org:80 -Nf remoteuser@remoteip`
+
+- Thanks to the -N option we did not login to halof but did the port forwarding instead.
+- The -f option told SSH to run in the background.
+- We specified user remoteuser to do the forwarding: remoteuser@remoteip
+
+Some use cases are:
+* Acessing a database (MySQL, MongoDB) using a fancy UI tool from your laptop
+* Using a browser to access a web application exposed to a private network
+* Acessing a container port from your laptop without publishing it on the server public interface.
+
+```bash
+ssh -L [local_addr:]local_port:remote_addr:remote_port [user@]sshd_addr
+```
+
+The -L flag indicates we're starting a local port forwarding. What it actually means is:
+- On your machine, the SSH client will start listening on local_port (likely, on localhost, but t it depends - check the GatewayPorts setting).
+- Any traffic to this port will be forwarded to the remote_private_addr:remote_port on the machine you SSH-ed to.
+
+##### Local Port Forwarding with a Bastion Host
+
+It might not be obvious at first, but the ssh -L command allows forwarding a local port to a remote port on any machine, not only on the SSH server itself. Notice how the remote_addr and sshd_addr may or may not have the same value.
+
+so the sshd would be at the bastion host.
+
+#### Remote Port Tunnel
+
+In remote port tunnelling (or reverse port forwarding) the traffic coming on a port on the remote server is forwarded to the SSH process running on your local host, and from there to the specified port on the destination server (which may also be your local machine).
+
+For example, say you wanted to let someone from outside your network access the Apache web server running on your local host through port 8585 of the SSH server running on halof (192.168.1.77). You would proceed with the following command: `ssh -R 8585:localhost:80 -Nf ina@192.168.1.77`
+
+Now anyone who establishes a connection to halof on port 8585 will see Debian's Apache2 default homepage
+
+Use case:
+Another popular scenario is when you want to momentarily expose a local service to the outside world. Of course, for that, you'll need a public-facing ingress gateway server.
+
+```bash
+ssh -R [remote_addr:]remote_port:local_addr:local_port [user@]gateway_addr
+```
+
+#### X11 Tunnels
+
+Through an X11 tunnel, X window system on the remote host is forwarded to the local machine. for example: `ssh -X ina@halof`
+
+you can now launch a graphical application such as firefox: the app will be run on the remote server but its display will be forwarded to your local host.
+
+If you start a new SSH session with the -x option instead, X11forwarding will be disabled.
+
+> The three configuration directives related to local port forwarding, remote port forwarding and X11 forwarding are AllowTcpForwarding,GatewayPorts and X11Forwarding, respectively. For more information, type man ssh_config and/or man sshd_config.
+
+To enable root logins add `PermitRootLogin` in `/etc/ssh/sshd_config`.
+To specify only a local account to accept ssh connections use `AllowUsers` in `/etc/ssh/sshd_config`.
+To transfer the client public key to the server you can use `ssh-copy-id` command.
+
+## GnuPG (GPG)
+
+GNU Privacy Guard is a free, open-source implementation of the Pretty Good Privacy (PGP).
+
+GPS uses the OpenPGP standard as defined by OpenPGP Working Group of the IETF in RFC 4880.
+
+The command to work with GPG is `gpg`
+
+### Configuration, Usage and Revocation
+
+the underlying mechanism to GPG is that of assymetric cryptography.
+
+To generate a key pair for a user, you will use: `gpg --gen-key`.
+
+After generating you can see whats inside `~/.gnupg` directory.
+
+It may include:
+**opengp-revocs.d**: revocation certificate that was created along with the key pair is kept here. The permissions on this directory are quite restrictive as anyone who has access to the certificate could revoke the key
+**private-keys-v1.d**: This is the directory that keeps your private keys, therefore permissions are restrictive
+**pubring.kbx**: This is your public keyring. It stores your own as well as any other imported public keys.
+**trustdb.gpg**: The trust database. This has to do with the concept of Web of Trust
+
+> The arrival of GnuPG 2.1 brought along some significant changes, such as the disappearance of the secring.gpg and pubring.gpg files in favour of private- keys-v1.d and pubring.kbx, respectively.
+
+after creating the keypar you can use `gpg --list-keys` which will display the contents of your publickeyring. it will display the public key fingerprint. The KEY-ID consists of the last 8 hexadecimal digits in your public key fingerprint. You can check your key fingerprint with the command gpg --fingerprint USER-ID.
+
+#### Key Distribution and Revogation
+
+After having your public key, you can export it and make it available to other recipients.
+
+They will be able to encrypt files intended for you.
+
+You can export your key using: `gpg --export carol > carol.pub.key`
+To export all keys you can use: `gpg --export --output all.keys`
+to export all private keys you can use: `gpg --export-secret-keys --output all_private.key`
+you can use `--edit-key` to use a menu for key management tasks.
+
+> Passing the -a or --armor option to gpg --export(e.g.: gpg --export --armor carol > carol.pub.key) will create ASCII armored output (instead of the default binary OpenPGP format) which can be safely emailed.
+
+> A means of public key distribution is through the use of key servers: you upload your public key to the server with the command gpg --keyserver keyserver-name --send-keys KEY-ID and other users will get (i.e. import) them with gpg --keyserver keyserver-name --recv-keys KEY-ID.
+
+Key revogation: should be used when a private key have been retired or compromised. First, create a revogation certificate by using `--gen-revoke` followed by UID. you can preceed the option with `--output` to save the result to a file. For example: `gpg --output revocation_file.asc --gen-revoke sonya`
+
+To effectively revoke your private key, you now need to merge the certificate with the key, which is done by importing the revocation certificate file to your keyring: `gpg --import revocation_file.asc`. if you list keys again you will see it was revoked.
+
+#### Encrypt/Decrypt
+
+The recipient must import the public key to its keyring: `gpg --import carol.pub.key`
+
+To encrypt a file use: `gpg --output encrypted-message.txt --recipient carol --armor --encrypt unencrypted-message.txt`
+To decrypt use: `gpg --decrypt encrypted-message.txt`
+
+#### Sign/Verify files
+
+to sign use: `gpg --output message.sig --sign message.txt`
+to verify use: `gpg --verify message.sig`
+to read the files use: `gpg --output message --decrypt message.sig`
+cleartext signature: `gpg --clearsign`
+#### GPG-Agent
+
+gpg-agent is the daemon that manages private keys for GPG (it is started on demand by gpg). To view a summary of the most useful options, run gpg-agent --help or gpg-agent -h
