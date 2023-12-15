@@ -6,6 +6,7 @@ Repository to Index Linux System Administration Reference Material
 - [Bash/Shell Scripting](https://github.com/caetanoct/shell-scripting)
 # GCP
 - [Kafka Cluster PoC](https://github.com/caetanoct/kafka-cluster-iac)
+- [DNS Material](./dns/dns.md)
 # References
 
 1. LPIC-1 Exam 101. (n.d.). LPIC-1 Exam 101. https://learning.lpi.org/en/learning-materials/101-500/
